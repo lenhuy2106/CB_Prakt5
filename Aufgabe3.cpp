@@ -38,7 +38,7 @@ float specular_power = 10 ;
 float rotation[] = {0, 0,0,0};
 //GUI
 TwBar *bar;
-unsigned int tesselation = 2;
+unsigned int tesselation = 1;
 float scaling = 1.0f;
 // Definition der Kreiszahl
 #define GL_PI 3.1415f
@@ -101,7 +101,7 @@ void CreateCircle(int id, int xOff, int yOff, int zOff, int radius) {
 
 	int minTriangles = 4;
 	float actualTriangles = tesselation * minTriangles;
-	int numberOfVertices = actualTriangles + 2;
+	int numberOfVertices = actualTriangles * 3;
 
 	// Erzeuge einen weiteren Triangle_Fan um den kreis zu bedecken
 	// Manuel verändern... numberOfVertices
@@ -109,42 +109,86 @@ void CreateCircle(int id, int xOff, int yOff, int zOff, int radius) {
 	M3DVector4f* kreisColors = new M3DVector4f[numberOfVertices]();
 
 	// Das Zentrum des Triangle_Fans ist im Ursprung
-	m3dLoadVector3(kreisVertices[0], xOff, yOff, zOff*size);
+	// DEP: m3dLoadVector3(kreisVertices[0], xOff, yOff, zOff*size);
 	m3dLoadVector4(kreisColors[0], 1, 0, 0, 1);
 	int iPivot = 1 * size;
-	int i = 1;
+	int i = 0;
 
-	for (int j = 0; j < numberOfVertices - 1; j++)
-	{
+	for (int j = 0; j < actualTriangles; j++) {
+		i = j * 3;
 		float angle;
-		if (zOff > 0)
+		float angle2;
+		if (zOff > 0) {
 			angle = (2.0f*GL_PI) + j * (2.0f * GL_PI / actualTriangles);
-		else
+			angle2 = (2.0f*GL_PI) + (j + 1) * (2.0f * GL_PI / actualTriangles);
+		}
+
+		else {
 			angle = (2.0f*GL_PI) - j * (2.0f * GL_PI / actualTriangles);
+			angle2 = (2.0f*GL_PI) - (j + 1) * (2.0f * GL_PI / actualTriangles);
+		}
 
 		// Berechne x und y Positionen des naechsten Vertex
 		float x = radius*size*cos(angle);
 		float y = radius*size*sin(angle);
-
+		float x2 = radius*size*cos(angle2);
+		float y2 = radius*size*sin(angle2);
 
 		// Alterniere die Farbe zwischen Rot und Gruen
-		if ((iPivot % 2) == 0)
+		/* DEP
+		if ((iPivot % 2) == 0) {
 			m3dLoadVector4(kreisColors[i], 1, 0.8, 0.2, 1);
-		else
+
+		} else {
 			m3dLoadVector4(kreisColors[i], 0, 0.8, 0, 1);
+		}
+		*/
 
 		// Inkrementiere iPivot um die Farbe beim naechsten mal zu wechseln
 		iPivot++;
 
 		// Spezifiziere den naechsten Vertex des Triangle_Fans
-		m3dLoadVector3(kreisVertices[i], xOff + x, yOff + y, zOff*size);
-		i++;
+		m3dLoadVector3(kreisVertices[i], xOff, yOff, (zOff * size));
+		m3dLoadVector3(kreisVertices[i + 1], xOff + x, yOff + y, (zOff * size));
+		m3dLoadVector3(kreisVertices[i + 2], xOff + x2, yOff + y2, (zOff * size));
 	}
 
-	kreis[id].Begin(GL_TRIANGLE_FAN, numberOfVertices);
+	// calculate normals for every vertices
+	// M3DVector3f* vNorms = calculateNormals(numberOfVertices, kreisVertices);
+	// TODO: calculate
+
+	kreis[id].Begin(GL_TRIANGLES, numberOfVertices);
 	kreis[id].CopyVertexData3f(kreisVertices);
 	kreis[id].CopyColorData4f(kreisColors);
+	// kreis[id].CopyNormalDataf(vNorms);
 	kreis[id].End();
+}
+
+
+// calculate normals
+// param: GL_TRIANGLE - vertices
+M3DVector3f* getSurfaceNormal(int numberOfVertices, M3DVector3f* vertices) {
+	
+	M3DVector3f* vNormals = new M3DVector3f[numberOfVertices]();
+
+	int i = 0;
+
+	M3DVector3f u;
+	u[0] = vertices[i + 1][0] - vertices[i][0];
+	u[1] = vertices[i + 1][1] - vertices[i][1];
+	u[2] = vertices[i + 1][2] - vertices[i][2];
+
+	M3DVector3f v;
+	v[0] = vertices[i + 2][0] - vertices[i][0];
+	v[1] = vertices[i + 2][1] - vertices[i][1];
+	v[2] = vertices[i + 2][2] - vertices[i][2];
+
+	vNormals[i][0] = (u[1] * v[2]) - (u[2] * v[1]);
+	vNormals[i][1] = (u[2] * v[0]) - (u[0] * v[2]);
+	vNormals[i][2] = (u[0] * v[1]) - (u[1] * v[0]);
+
+	// TODO: return only one vec
+	return vNormals;
 }
 
 // Malt Pipe mit Länge length.
