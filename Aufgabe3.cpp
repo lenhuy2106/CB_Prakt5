@@ -169,19 +169,31 @@ void CreateCircle(int id, int xOff, int yOff, int zOff, int radius) {
 
 	// Draw normals
 	M3DVector3f* vNormals = new M3DVector3f[numberOfVertices]();
+	M3DVector4f* vNormalsColors = new M3DVector4f[numberOfVertices]();
 	for (int i = 0; i < numberOfVertices / 2; i++) {
-		m3dLoadVector3(vNormals[i * 2], kreisVertices[i * 2][0], kreisVertices[i * 2][1], kreisVertices[i * 2][2]);
-		m3dLoadVector3(vNormals[i * 2 + 1], surfaceNormals[i * 2 + 1][0] + kreisVertices[i * 2][0],
-											surfaceNormals[i * 2 + 1][1] + kreisVertices[i * 2][1],
-											surfaceNormals[i * 2 + 1][2] + kreisVertices[i * 2][2]);
+		int j = i * 2;
+		m3dLoadVector3(vNormals[j], kreisVertices[j][0], kreisVertices[j][1], kreisVertices[j][2]);
+		m3dLoadVector3(vNormals[j + 1], surfaceNormals[j + 1][0] + kreisVertices[j][0],
+										surfaceNormals[j + 1][1] + kreisVertices[j][1],
+										surfaceNormals[j + 1][2] + kreisVertices[j][2]);
 
-		printf("x1: %f x2: %f x3: %f \n", surfaceNormals[i * 2 + 1][0] + kreisVertices[i * 2][0],
-											surfaceNormals[i * 2 + 1][1] + kreisVertices[i * 2][1],
-											surfaceNormals[i * 2 + 1][2] + kreisVertices[i * 2][2]);
+		printf("x1: %f x2: %f x3: %f \n", surfaceNormals[j + 1][0] + kreisVertices[j][0],
+											surfaceNormals[j + 1][1] + kreisVertices[j][1],
+											surfaceNormals[j + 1][2] + kreisVertices[j][2]);
+		m3dLoadVector4(vNormalsColors[j], 0.5, 0.5, 0.5, 1);
+		m3dLoadVector4(vNormalsColors[j + 1], 0.5, 0.5, 0.5, 1);
+	}
+
+	
+
+	for (int i = 0; i < numberOfVertices; i++) {
+		
 	}
 
 	normals.Begin(GL_LINES, numberOfVertices);
 	normals.CopyVertexData3f(vNormals);
+	// lol
+	kreis[id].CopyColorData4f(vNormalsColors);
 	normals.End();
 }
 
