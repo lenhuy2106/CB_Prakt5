@@ -38,20 +38,23 @@ float specular_power = 10 ;
 float rotation[] = {0, 0,0,0};
 //GUI
 TwBar *bar;
-unsigned int tesselation = 1;
+unsigned int tesselation = 10;
 float scaling = 1.0f;
 // Definition der Kreiszahl
 #define GL_PI 3.1415f
 // Zylinder
 GLBatch rohr;
 GLBatch kreis[2];
+// Normals
+GLBatch normals;
 // TEST
 GLShaderManager shaderManager;
+M3DVector3f* surfaceNormals;
 
 void CreateCircle(int id, int xOff, int yOff, int zOff, int radius);
 void CreatePipe(int xOff, int yOff, int zOff, int length, int radius);
 void CreateCylinder(int xOff, int yOff, int zOff, int length, int radius);
-M3DVector3f* getAllSurfaceNormals(int numberOfVertices, M3DVector3f* vertices);
+void getAllSurfaceNormals(int numberOfVertices, M3DVector3f* vertices);
 M3DVector3f* getTriangleNormal(M3DVector3f v0, M3DVector3f v1, M3DVector3f v2);
 void normalizeVector(M3DVector3f *vector);
 
@@ -99,9 +102,7 @@ void CreateCylinder(int xOff, int yOff, int zOff, int length, int radius){
 
 // Malt Circle mit ID, falls zOff > 0 Front
 void CreateCircle(int id, int xOff, int yOff, int zOff, int radius) {
-
 	float size = 2 + 0.5 * scaling;
-
 	int minTriangles = 4;
 	float actualTriangles = tesselation * minTriangles;
 	int numberOfVertices = actualTriangles * 3;
@@ -138,7 +139,7 @@ void CreateCircle(int id, int xOff, int yOff, int zOff, int radius) {
 		float y2 = radius*size*sin(angle2);
 
 		// Alterniere die Farbe zwischen Rot und Gruen
-		/* DEP
+		/* TODO: Fix coloring
 		if ((iPivot % 2) == 0) {
 			m3dLoadVector4(kreisColors[i], 1, 0.8, 0.2, 1);
 
@@ -154,52 +155,60 @@ void CreateCircle(int id, int xOff, int yOff, int zOff, int radius) {
 		m3dLoadVector3(kreisVertices[i], xOff, yOff, (zOff * size));
 		m3dLoadVector3(kreisVertices[i + 1], xOff + x, yOff + y, (zOff * size));
 		m3dLoadVector3(kreisVertices[i + 2], xOff + x2, yOff + y2, (zOff * size));
-
-		M3DVector3f* vNormals = getAllSurfaceNormals(actualTriangles, kreisVertices);
 	}
 
-	// calculate normals for every vertices
-	// M3DVector3f* vNorms = calculateNormals(numberOfVertices, kreisVertices);
-	// TODO: calculate
+	printf("actual triangles: %f \n", actualTriangles);
+	// calculate normals for every triangles
+	getAllSurfaceNormals(actualTriangles, kreisVertices);
 
 	kreis[id].Begin(GL_TRIANGLES, numberOfVertices);
 	kreis[id].CopyVertexData3f(kreisVertices);
 	kreis[id].CopyColorData4f(kreisColors);
-	// kreis[id].CopyNormalDataf(vNorms);
+	kreis[id].CopyNormalDataf(surfaceNormals);
 	kreis[id].End();
-}
 
+	// Draw normals
+	M3DVector3f* vNormals = new M3DVector3f[numberOfVertices]();
+	for (int i = 0; i < numberOfVertices / 2; i++) {
+		m3dLoadVector3(vNormals[i * 2], kreisVertices[i * 2][0], kreisVertices[i * 2][1], kreisVertices[i * 2][2]);
+		m3dLoadVector3(vNormals[i * 2 + 1], surfaceNormals[i * 2 + 1][0] + kreisVertices[i * 2][0],
+											surfaceNormals[i * 2 + 1][1] + kreisVertices[i * 2][1],
+											surfaceNormals[i * 2 + 1][2] + kreisVertices[i * 2][2]);
 
-// calculate normals
-// param: GL_TRIANGLE - vertices
-M3DVector3f* getAllSurfaceNormals(int nTriangles, M3DVector3f* vertices) {
-	
-	M3DVector3f* vNormals = new M3DVector3f[nTriangles]();
-
-	/*
-	M3DVector3f u;
-	u[0] = vertices[i + 1][0] - vertices[i][0];
-	u[1] = vertices[i + 1][1] - vertices[i][1];
-	u[2] = vertices[i + 1][2] - vertices[i][2];
-
-	M3DVector3f v;
-	v[0] = vertices[i + 2][0] - vertices[i][0];
-	v[1] = vertices[i + 2][1] - vertices[i][1];
-	v[2] = vertices[i + 2][2] - vertices[i][2];
-
-	vNormals[i][0] = (u[1] * v[2]) - (u[2] * v[1]);
-	vNormals[i][1] = (u[2] * v[0]) - (u[0] * v[2]);
-	vNormals[i][2] = (u[0] * v[1]) - (u[1] * v[0]);
-	*/
-
-	for (int i = 0; i < nTriangles; i++) {
-		M3DVector3f* normal = getTriangleNormal(vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2]);
-		m3dLoadVector3(vNormals[i], *normal[0], *normal[1], *normal[2]);
+		printf("x1: %f x2: %f x3: %f \n", surfaceNormals[i * 2 + 1][0] + kreisVertices[i * 2][0],
+											surfaceNormals[i * 2 + 1][1] + kreisVertices[i * 2][1],
+											surfaceNormals[i * 2 + 1][2] + kreisVertices[i * 2][2]);
 	}
 
-	return vNormals;
+	normals.Begin(GL_LINES, numberOfVertices);
+	normals.CopyVertexData3f(vNormals);
+	normals.End();
 }
 
+/*calculate normals -- param: GL_TRIANGLE - vertices*/
+void getAllSurfaceNormals(int nTriangles, M3DVector3f* vertices) {
+	surfaceNormals = new M3DVector3f[nTriangles]();
+	for (int i = 0; i < nTriangles; i++) {
+		// M3DVector3f* normal = getTriangleNormal(vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2]);
+		M3DVector3f u;
+		u[0] = vertices[i * 3 + 1][0] - vertices[i * 3][0];
+		u[1] = vertices[i * 3 + 1][1] - vertices[i * 3][1];
+		u[2] = vertices[i * 3 + 1][2] - vertices[i * 3][2];
+		M3DVector3f v;
+		v[0] = vertices[i * 3 + 2][0] - vertices[i * 3][0];
+		v[1] = vertices[i * 3 + 2][1] - vertices[i * 3][1];
+		v[2] = vertices[i * 3 + 2][2] - vertices[i * 3][2];
+		float x = (u[1] * v[2]) - (u[2] * v[1]);
+		float y = (u[2] * v[0]) - (u[0] * v[2]);
+		float z = (u[0] * v[1]) - (u[1] * v[0]);
+		printf("x: %f, y: %f, z: %f \n", x, y, z);
+		m3dLoadVector3(surfaceNormals[i], x, y, z);
+		//TODO: Fix method
+		//normalizeVector(&surfaceNormals[i]);
+	}
+}
+
+/*DEPRECATED: heap allocation bugs*/
 /*Calculates and normalize normal of a triangle surface*/
 M3DVector3f* getTriangleNormal(M3DVector3f v0, M3DVector3f v1, M3DVector3f v2) {
 	M3DVector3f* normal = new M3DVector3f[0]();
@@ -308,10 +317,14 @@ void RenderScene(void)
 	//---------------------------------
 
 	//Zeichne Model
+	
 	geometryBatch.Draw();
 	rohr.Draw();
 	kreis[0].Draw();
 	kreis[1].Draw();
+	
+	glLineWidth(10);
+	normals.Draw();
 
 	// Hole die im Stack gespeicherten Transformationsmatrizen wieder zurück
 	modelViewMatrix.PopMatrix();
