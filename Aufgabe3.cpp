@@ -209,6 +209,7 @@ M3DVector3f* getTriangleNormal(M3DVector3f v0, M3DVector3f v1, M3DVector3f v2) {
 	*normal[0] = (u[1] * v[2]) - (u[2] * v[1]);
 	*normal[1] = (u[2] * v[0]) - (u[0] * v[2]);
 	*normal[2] = (u[0] * v[1]) - (u[1] * v[0]);
+	normalizeVector(normal);
 	return normal;
 }
 
