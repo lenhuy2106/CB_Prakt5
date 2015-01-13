@@ -51,6 +51,9 @@ GLShaderManager shaderManager;
 void CreateCircle(int id, int xOff, int yOff, int zOff, int radius);
 void CreatePipe(int xOff, int yOff, int zOff, int length, int radius);
 void CreateCylinder(int xOff, int yOff, int zOff, int length, int radius);
+M3DVector3f* getAllSurfaceNormals(int numberOfVertices, M3DVector3f* vertices);
+M3DVector3f* getTriangleNormal(M3DVector3f v0, M3DVector3f v1, M3DVector3f v2);
+void normalizeVector(M3DVector3f *vector);
 
 void InitGUI()
 {
@@ -151,6 +154,8 @@ void CreateCircle(int id, int xOff, int yOff, int zOff, int radius) {
 		m3dLoadVector3(kreisVertices[i], xOff, yOff, (zOff * size));
 		m3dLoadVector3(kreisVertices[i + 1], xOff + x, yOff + y, (zOff * size));
 		m3dLoadVector3(kreisVertices[i + 2], xOff + x2, yOff + y2, (zOff * size));
+
+		M3DVector3f* vNormals = getAllSurfaceNormals(actualTriangles, kreisVertices);
 	}
 
 	// calculate normals for every vertices
@@ -167,9 +172,9 @@ void CreateCircle(int id, int xOff, int yOff, int zOff, int radius) {
 
 // calculate normals
 // param: GL_TRIANGLE - vertices
-M3DVector3f* getAllSurfaceNormals(int numberOfVertices, M3DVector3f* vertices) {
+M3DVector3f* getAllSurfaceNormals(int nTriangles, M3DVector3f* vertices) {
 	
-	M3DVector3f* vNormals = new M3DVector3f[numberOfVertices/3]();
+	M3DVector3f* vNormals = new M3DVector3f[nTriangles]();
 
 	/*
 	M3DVector3f u;
@@ -187,8 +192,8 @@ M3DVector3f* getAllSurfaceNormals(int numberOfVertices, M3DVector3f* vertices) {
 	vNormals[i][2] = (u[0] * v[1]) - (u[1] * v[0]);
 	*/
 
-	for (int i = 0; i < numberOfVertices / 3; i++) {
-		M3DVector3f* normal = getTriangleNormal(vertices[i], vertices[i + 1], vertices[i + 2]);
+	for (int i = 0; i < nTriangles; i++) {
+		M3DVector3f* normal = getTriangleNormal(vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2]);
 		m3dLoadVector3(vNormals[i], *normal[0], *normal[1], *normal[2]);
 	}
 
@@ -197,7 +202,7 @@ M3DVector3f* getAllSurfaceNormals(int numberOfVertices, M3DVector3f* vertices) {
 
 /*Calculates and normalize normal of a triangle surface*/
 M3DVector3f* getTriangleNormal(M3DVector3f v0, M3DVector3f v1, M3DVector3f v2) {
-	M3DVector3f* normal;
+	M3DVector3f* normal = new M3DVector3f[0]();
 	M3DVector3f u;
 	u[0] = v1[0] - v0[0];
 	u[1] = v1[1] - v0[1];
@@ -206,9 +211,10 @@ M3DVector3f* getTriangleNormal(M3DVector3f v0, M3DVector3f v1, M3DVector3f v2) {
 	v[0] = v2[0] - v0[0];
 	v[1] = v2[1] - v0[1];
 	v[2] = v2[2] - v0[2];
-	*normal[0] = (u[1] * v[2]) - (u[2] * v[1]);
-	*normal[1] = (u[2] * v[0]) - (u[0] * v[2]);
-	*normal[2] = (u[0] * v[1]) - (u[1] * v[0]);
+	float x = (u[1] * v[2]) - (u[2] * v[1]);
+	float y = (u[2] * v[0]) - (u[0] * v[2]);
+	float z = (u[0] * v[1]) - (u[1] * v[0]);
+	m3dLoadVector3(*normal, x, y, z);
 	normalizeVector(normal);
 	return normal;
 }
