@@ -167,12 +167,11 @@ void CreateCircle(int id, int xOff, int yOff, int zOff, int radius) {
 
 // calculate normals
 // param: GL_TRIANGLE - vertices
-M3DVector3f* getSurfaceNormal(int numberOfVertices, M3DVector3f* vertices) {
+M3DVector3f* getAllSurfaceNormals(int numberOfVertices, M3DVector3f* vertices) {
 	
-	M3DVector3f* vNormals = new M3DVector3f[numberOfVertices]();
+	M3DVector3f* vNormals = new M3DVector3f[numberOfVertices/3]();
 
-	int i = 0;
-
+	/*
 	M3DVector3f u;
 	u[0] = vertices[i + 1][0] - vertices[i][0];
 	u[1] = vertices[i + 1][1] - vertices[i][1];
@@ -186,9 +185,39 @@ M3DVector3f* getSurfaceNormal(int numberOfVertices, M3DVector3f* vertices) {
 	vNormals[i][0] = (u[1] * v[2]) - (u[2] * v[1]);
 	vNormals[i][1] = (u[2] * v[0]) - (u[0] * v[2]);
 	vNormals[i][2] = (u[0] * v[1]) - (u[1] * v[0]);
+	*/
 
-	// TODO: return only one vec
+	for (int i = 0; i < numberOfVertices / 3; i++) {
+		M3DVector3f* normal = getTriangleNormal(vertices[i], vertices[i + 1], vertices[i + 2]);
+		m3dLoadVector3(vNormals[i], *normal[0], *normal[1], *normal[2]);
+	}
+
 	return vNormals;
+}
+
+/*Calculates and normalize normal of a triangle surface*/
+M3DVector3f* getTriangleNormal(M3DVector3f v0, M3DVector3f v1, M3DVector3f v2) {
+	M3DVector3f* normal;
+	M3DVector3f u;
+	u[0] = v1[0] - v0[0];
+	u[1] = v1[1] - v0[1];
+	u[2] = v1[2] - v0[2];
+	M3DVector3f v;
+	v[0] = v2[0] - v0[0];
+	v[1] = v2[1] - v0[1];
+	v[2] = v2[2] - v0[2];
+	*normal[0] = (u[1] * v[2]) - (u[2] * v[1]);
+	*normal[1] = (u[2] * v[0]) - (u[0] * v[2]);
+	*normal[2] = (u[0] * v[1]) - (u[1] * v[0]);
+	return normal;
+}
+
+/*Normalize vector*/
+void normalizeVector(M3DVector3f *vector) {
+	float length = sqrt((*vector[0] * *vector[0]) + (*vector[1] * *vector[1]) + (*vector[2] * *vector[2]));
+	*vector[0] /= length;
+	*vector[1] /= length;
+	*vector[2] /= length;
 }
 
 // Malt Pipe mit Länge length.
