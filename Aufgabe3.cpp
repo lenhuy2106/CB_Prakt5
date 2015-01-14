@@ -219,11 +219,6 @@ void CreateCircle(int id, int xOff, int yOff, int zOff, int radius) {
 	}
 	printf("\n");
 
-	for (int i = 0; i < numberOfVertices * 2; i++) {
-		printf("%d: vn_x: %f vn_y: %f vn_z: %f \n", i, vNormals[i][0], vNormals[i][1], vNormals[i][2]);
-	}
-	printf("\n");
-
 	normals[id].Begin(GL_LINES, numberOfVertices * 2);
 	// normals[id].CopyVertexData3f(vNormals[id]);
 	// TODO: lol
@@ -293,7 +288,7 @@ void CreatePipe(int id, int xOff, int yOff, int zOff, int length, int radius) {
 	M3DVector3f* pipeVertices = new M3DVector3f[numberOfVertices]();
 	M3DVector4f* pipeColors = new M3DVector4f[numberOfVertices]();
 
-	// upper half
+	// create
 	int i = 0;
 	for (int j = 0; j < actualTriangles / 2; j++) {
 		float angle = (2.0f*GL_PI) - j * (2.0f*GL_PI / (actualTriangles / 2.0f));
@@ -343,8 +338,9 @@ void CreatePipe(int id, int xOff, int yOff, int zOff, int length, int radius) {
 		m3dLoadVector3(surfaceNormalsMantle[i], x, y, z);
 		// normalize
 		m3dNormalizeVector3(surfaceNormalsMantle[i]);
-		//printf("snfc_x: %f snfc_y: %f snfc_z: %f \n", surfaceNormalsFirstCircle[i][0], surfaceNormalsFirstCircle[i][1], surfaceNormalsFirstCircle[i][2]);
+		printf("%d: snm_x: %f snm_y: %f snm_z: %f \n", i, surfaceNormalsMantle[i][0], surfaceNormalsMantle[i][1], surfaceNormalsMantle[i][2]);
 	}
+
 	printf("\n");
 
 	// ------------------------------------------------------------
@@ -352,10 +348,72 @@ void CreatePipe(int id, int xOff, int yOff, int zOff, int length, int radius) {
 	M3DVector3f* lightNormalsMantle = new M3DVector3f[numberOfVertices]();
 
 	// calculate combined light normals for every vertex
+	/*
 	for (int i = 0; i < numberOfVertices; i++) {
-		m3dLoadVector3(lightNormalsMantle[i], surfaceNormalsMantle[i / 3][0] + surfaceNormalsMantle[i / 3 + 1][0] + surfaceNormalsCircle[i % 2][i][0],
-												surfaceNormalsMantle[i / 3][1] + surfaceNormalsMantle[i / 3 + 1][1] + surfaceNormalsCircle[i % 2][i][1],
-												surfaceNormalsMantle[i / 3][2] + surfaceNormalsMantle[i / 3 + 1][2] + surfaceNormalsCircle[i % 2][i][2]);
+		int j = i * 2;
+		m3dLoadVector3(vNormals[id][j], pipeVertices[i][0], pipeVertices[i][1], pipeVertices[i][2]);
+		m3dLoadVector3(vNormals[id][j + 1], surfaceNormalsMantle[i / 3][0] + pipeVertices[i][0],
+											surfaceNormalsMantle[i / 3][1] + pipeVertices[i][1],
+											surfaceNormalsMantle[i / 3][2] + pipeVertices[i][2]);
+	*/
+
+	// special cases 0 and 1
+	m3dLoadVector3(lightNormalsMantle[0], surfaceNormalsMantle[numberOfVertices / 3][0] + surfaceNormalsMantle[1][0] + surfaceNormalsCircle[0][0][0],
+											surfaceNormalsMantle[numberOfVertices / 3][1] + surfaceNormalsMantle[1][1] + surfaceNormalsCircle[0][0][1],
+											surfaceNormalsMantle[numberOfVertices / 3][2] + surfaceNormalsMantle[1][2] + surfaceNormalsCircle[0][0][2]);
+
+	m3dLoadVector3(lightNormalsMantle[1], surfaceNormalsMantle[numberOfVertices / 3][0] + surfaceNormalsMantle[1][0] + surfaceNormalsCircle[1][0][0],
+											surfaceNormalsMantle[i / 3][1] + surfaceNormalsMantle[1][1] + surfaceNormalsCircle[1][0][1],
+											surfaceNormalsMantle[i / 3][2] + surfaceNormalsMantle[1][2] + surfaceNormalsCircle[1][0][2]);
+	
+	// rest
+	/*
+	for (int i = 0; i < numberOfVertices / 4 - 1; i++) {
+		m3dLoadVector3(lightNormalsMantle[i], surfaceNormalsMantle[i / 3][0] + surfaceNormalsMantle[i / 3 + 2][0] + surfaceNormalsCircle[i % 2][0][0],
+												surfaceNormalsMantle[i / 3][1] + surfaceNormalsMantle[i / 3 + 2][1] + surfaceNormalsCircle[i % 2][0][1],
+												surfaceNormalsMantle[i / 3][2] + surfaceNormalsMantle[i / 3 + 2][2] + surfaceNormalsCircle[i % 2][0][2]);
+
+		m3dLoadVector3(lightNormalsMantle[i + 3], lightNormalsMantle[i][0],
+												lightNormalsMantle[i][1],
+												lightNormalsMantle[i][2]);
+
+		m3dLoadVector3(lightNormalsMantle[i + 7], lightNormalsMantle[i][0],
+												lightNormalsMantle[i][1],
+												lightNormalsMantle[i][2]);
+
+		//m3dNormalizeVector3(lightNormalsMantle[i]);
+		printf("%d - %d \n",i / 3, i / 3 + 2);
+	}
+	*/
+
+	// TODO: fix first/last
+	printf("\n");
+	int nSurface = numberOfVertices / 3;
+	for (int i = 1; i < nSurface; i += 2) {
+		int j = i * 3;
+		m3dLoadVector3(lightNormalsMantle[j - 1 % numberOfVertices],	surfaceNormalsMantle[i][0] + surfaceNormalsMantle[i + 2 % nSurface][0] + surfaceNormalsCircle[0][0][0],
+																		surfaceNormalsMantle[i][1] + surfaceNormalsMantle[i + 2 % nSurface][1] + surfaceNormalsCircle[0][0][1],
+																		surfaceNormalsMantle[i][2] + surfaceNormalsMantle[i + 2 % nSurface][2] + surfaceNormalsCircle[0][0][2]);
+		m3dLoadVector3(lightNormalsMantle[j + 2 % numberOfVertices],    lightNormalsMantle[j - 1 % numberOfVertices][0],
+																		lightNormalsMantle[j - 1 % numberOfVertices][1],
+																		lightNormalsMantle[j - 1 % numberOfVertices][2]);
+		m3dLoadVector3(lightNormalsMantle[j + 4 % numberOfVertices],    lightNormalsMantle[j - 1 % numberOfVertices][0],
+																		lightNormalsMantle[j - 1 % numberOfVertices][1],
+																		lightNormalsMantle[j - 1 % numberOfVertices][2]);
+		m3dLoadVector3(lightNormalsMantle[j + 0 % numberOfVertices],	surfaceNormalsMantle[i][0] + surfaceNormalsMantle[i + 2 % nSurface][0] + surfaceNormalsCircle[1][0][0],
+																		surfaceNormalsMantle[i][1] + surfaceNormalsMantle[i + 2 % nSurface][1] + surfaceNormalsCircle[1][0][1],
+																		surfaceNormalsMantle[i][2] + surfaceNormalsMantle[i + 2 % nSurface][2] + surfaceNormalsCircle[1][0][2]);
+		m3dLoadVector3(lightNormalsMantle[j + 3 % numberOfVertices],    lightNormalsMantle[j + 0 % numberOfVertices][0],
+																		lightNormalsMantle[j + 0 % numberOfVertices][1],
+																		lightNormalsMantle[j + 0 % numberOfVertices][2]);
+		m3dLoadVector3(lightNormalsMantle[j + 7 % numberOfVertices],    lightNormalsMantle[j + 0 % numberOfVertices][0],
+																		lightNormalsMantle[j + 0 % numberOfVertices][1],
+																		lightNormalsMantle[j + 0 % numberOfVertices][2]);
+	}
+
+	// print
+	for (int i = 0; i < numberOfVertices; i++) {
+		printf("%d: lnm_x: %f lnm_y: %f lnm_z: %f \n", i, lightNormalsMantle[i][0], lightNormalsMantle[i][1], lightNormalsMantle[i][2]);
 	}
 
 	/*
@@ -374,39 +432,37 @@ void CreatePipe(int id, int xOff, int yOff, int zOff, int length, int radius) {
 	// Draw light normals
 	vNormals[id] = new M3DVector3f[numberOfVertices * 2]();
 	vNormalsColors[id] = new M3DVector4f[numberOfVertices * 2]();
-
-	/*
+	
 	for (int i = 0; i < numberOfVertices; i++) {
 		int j = i * 2;
 		m3dLoadVector3(vNormals[id][j], pipeVertices[i][0], pipeVertices[i][1], pipeVertices[i][2]);
-		m3dLoadVector3(vNormals[id][j + 1], lightNormalsMantle[i / 3][0] + pipeVertices[i][0],
-											lightNormalsMantle[i / 3][1] + pipeVertices[i][1],
-											lightNormalsMantle[i / 3][2] + pipeVertices[i][2]);
+		m3dLoadVector3(vNormals[id][j + 1], lightNormalsMantle[i][0] + pipeVertices[i][0],
+											lightNormalsMantle[i][1] + pipeVertices[i][1],
+											lightNormalsMantle[i][2] + pipeVertices[i][2]);
 
 		// colors
 		m3dLoadVector4(vNormalsColors[id][j], 0.5, 0.5, 0.5, 1);
 		m3dLoadVector4(vNormalsColors[id][j + 1], 0.5, 0.5, 0.5, 1);
 	}
-	*/
 
-	m3dLoadVector3(vNormals[id][0], pipeVertices[1][0], pipeVertices[1][1], pipeVertices[1][2]);
-	m3dLoadVector3(vNormals[id][1], lightNormalsMantle[0][0] + pipeVertices[1][0],
-									lightNormalsMantle[0][1] + pipeVertices[1][1],
-									lightNormalsMantle[0][2] + pipeVertices[1][2]);
 	/*
-
-	m3dLoadVector3(vNormals[id][2], pipeVertices[0][0], pipeVertices[0][1], pipeVertices[0][2]);
-	m3dLoadVector3(vNormals[id][3], lightNormalsMantle[1][0] + pipeVertices[0][0],
-									lightNormalsMantle[1][1] + pipeVertices[0][1],
-									lightNormalsMantle[1][2] + pipeVertices[0][2]);
-
-
-	m3dLoadVector3(vNormals[id][4], pipeVertices[2][0], pipeVertices[2][1], pipeVertices[2][2]);
-	m3dLoadVector3(vNormals[id][5], lightNormalsMantle[2][0] + pipeVertices[2][0],
-									lightNormalsMantle[2][1] + pipeVertices[2][1],
-									lightNormalsMantle[2][2] + pipeVertices[2][2]);
-	*/
+	m3dLoadVector3(vNormals[id][0], pipeVertices[0][0], pipeVertices[0][1], pipeVertices[0][2]);
+	m3dLoadVector3(vNormals[id][1], lightNormalsMantle[4][0] + pipeVertices[0][0],
+									lightNormalsMantle[4][1] + pipeVertices[0][1],
+									lightNormalsMantle[4][2] + pipeVertices[0][2]);
+									*/
 	
+	/*
+	m3dLoadVector3(vNormals[id][2], pipeVertices[3][0], pipeVertices[3][1], pipeVertices[3][2]);
+	m3dLoadVector3(vNormals[id][3], lightNormalsMantle[1][0] + pipeVertices[3][0],
+									lightNormalsMantle[1][1] + pipeVertices[3][1],
+									lightNormalsMantle[1][2] + pipeVertices[3][2]);
+
+	m3dLoadVector3(vNormals[id][4], pipeVertices[4][0], pipeVertices[4][1], pipeVertices[4][2]);
+	m3dLoadVector3(vNormals[id][5], lightNormalsMantle[2][0] + pipeVertices[4][0],
+									lightNormalsMantle[2][1] + pipeVertices[4][1],
+									lightNormalsMantle[2][2] + pipeVertices[4][2]);
+	*/
 	/*
 	m3dLoadVector3(vNormals[id][6], pipeVertices[2][0], pipeVertices[2][1], pipeVertices[2][2]);
 	m3dLoadVector3(vNormals[id][7], lightNormalsMantle[3][0] + pipeVertices[2][0],
@@ -443,18 +499,17 @@ void CreatePipe(int id, int xOff, int yOff, int zOff, int length, int radius) {
 	printf("\n");
 
 	for (int i = 0; i < numberOfVertices; i++) {
-		printf("%d: pv_x: %f kv_y: %f kv_z: %f \n", i, pipeVertices[i][0], pipeVertices[i][1], pipeVertices[i][2]);
+		printf("%d: pv_x: %f pv_y: %f pv_z: %f \n", i, pipeVertices[i][0], pipeVertices[i][1], pipeVertices[i][2]);
 	}
 	printf("\n");
-
+	/*
 	for (int i = 0; i < numberOfVertices * 2; i++) {
-		printf("%d: vn_x: %f vn_y: %f vn_z: %f \n", i, vNormals[i][0], vNormals[i][1], vNormals[i][2]);
+		printf("%d: vn_x: %d vn_y: %d vn_z: %d \n", i, vNormals[i][0], vNormals[i][1], vNormals[i][2]);
 	}
 	printf("\n");
 
 	normals[id].Begin(GL_LINES, numberOfVertices * 2);
 	normals[id].CopyVertexData3f(vNormals[id]);
-	// TODO: lol
 	normals[id].End();
 	*/
 }
