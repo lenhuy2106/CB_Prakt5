@@ -38,7 +38,7 @@ float specular_power = 10;
 float rotation[] = {0, 0,0,0};
 //GUI
 TwBar *bar;
-unsigned int tesselation = 1;
+unsigned int tesselation = 4;
 float scaling = 1.0f;
 // Definition der Kreiszahl
 #define GL_PI 3.1415f
