@@ -38,7 +38,7 @@ float specular_power = 10;
 float rotation[] = {0, 0,0,0};
 //GUI
 TwBar *bar;
-unsigned int tesselation = 4;
+unsigned int tesselation = 2;
 float scaling = 1.0f;
 // Definition der Kreiszahl
 #define GL_PI 3.1415f
@@ -177,11 +177,10 @@ void CreateCircle(int id, int xOff, int yOff, int zOff, int radius) {
 		float x = (u[1] * v[2]) - (u[2] * v[1]);
 		float y = (u[2] * v[0]) - (u[0] * v[2]);
 		float z = (u[0] * v[1]) - (u[1] * v[0]);
-		// printf("x: %f, y: %f, z: %f \n", x, y, z);
+		//printf("x: %f, y: %f, z: %f \n", x, y, z);
 		m3dLoadVector3(surfaceNormalsCircle[id][i], x, y, z);
 		// normalize
 		m3dNormalizeVector3(surfaceNormalsCircle[id][i]);
-		//printf("snfc_x: %f snfc_y: %f snfc_z: %f \n", surfaceNormalsFirstCircle[i][0], surfaceNormalsFirstCircle[i][1], surfaceNormalsFirstCircle[i][2]);
 	}
 	printf("\n");
 
@@ -190,7 +189,6 @@ void CreateCircle(int id, int xOff, int yOff, int zOff, int radius) {
 	kreis[id].Begin(GL_TRIANGLES, numberOfVertices);
 	kreis[id].CopyVertexData3f(kreisVertices);
 	kreis[id].CopyColorData4f(kreisColors);
-	kreis[id].CopyNormalDataf(surfaceNormalsCircle[id]);
 	kreis[id].End();
 
 	// Draw normals
@@ -210,7 +208,7 @@ void CreateCircle(int id, int xOff, int yOff, int zOff, int radius) {
 
 	// print
 	for (int i = 0; i < numberOfVertices / 3; i++) {
-		printf("%d: snfc_x: %f snfc_y: %f snfc_z: %f \n", i, surfaceNormalsCircle[id][i][0], surfaceNormalsCircle[id][i][1], surfaceNormalsCircle[id][i][2]);
+		printf("%d: snc_x: %f snc_y: %f snc_z: %f \n", i, surfaceNormalsCircle[id][i][0], surfaceNormalsCircle[id][i][1], surfaceNormalsCircle[id][i][2]);
 	}
 	printf("\n");
 
@@ -220,9 +218,9 @@ void CreateCircle(int id, int xOff, int yOff, int zOff, int radius) {
 	printf("\n");
 
 	normals[id].Begin(GL_LINES, numberOfVertices * 2);
-	// normals[id].CopyVertexData3f(vNormals[id]);
+	normals[id].CopyVertexData3f(vNormals[id]);
 	// TODO: lol
-	kreis[id].CopyColorData4f(vNormalsColors[id]);
+	//kreis[id].CopyColorData4f(vNormalsColors[id]);
 	normals[id].End();
 }
 
@@ -345,7 +343,7 @@ void CreatePipe(int id, int xOff, int yOff, int zOff, int length, int radius) {
 
 	// ------------------------------------------------------------
 
-	M3DVector3f* lightNormalsMantle = new M3DVector3f[numberOfVertices]();
+	M3DVector3f* lightNormalsMantle = new M3DVector3f[numberOfVertices * 2]();
 
 	// calculate combined light normals for every vertex
 	/*
@@ -356,7 +354,7 @@ void CreatePipe(int id, int xOff, int yOff, int zOff, int length, int radius) {
 											surfaceNormalsMantle[i / 3][1] + pipeVertices[i][1],
 											surfaceNormalsMantle[i / 3][2] + pipeVertices[i][2]);
 	*/
-
+	/*
 	// special cases 0 and 1
 	m3dLoadVector3(lightNormalsMantle[0], surfaceNormalsMantle[numberOfVertices / 3][0] + surfaceNormalsMantle[1][0] + surfaceNormalsCircle[0][0][0],
 											surfaceNormalsMantle[numberOfVertices / 3][1] + surfaceNormalsMantle[1][1] + surfaceNormalsCircle[0][0][1],
@@ -365,6 +363,7 @@ void CreatePipe(int id, int xOff, int yOff, int zOff, int length, int radius) {
 	m3dLoadVector3(lightNormalsMantle[1], surfaceNormalsMantle[numberOfVertices / 3][0] + surfaceNormalsMantle[1][0] + surfaceNormalsCircle[1][0][0],
 											surfaceNormalsMantle[i / 3][1] + surfaceNormalsMantle[1][1] + surfaceNormalsCircle[1][0][1],
 											surfaceNormalsMantle[i / 3][2] + surfaceNormalsMantle[1][2] + surfaceNormalsCircle[1][0][2]);
+	*/
 	
 	// rest
 	/*
@@ -386,7 +385,6 @@ void CreatePipe(int id, int xOff, int yOff, int zOff, int length, int radius) {
 	}
 	*/
 
-	// TODO: fix first/last
 	printf("\n");
 	int nSurface = numberOfVertices / 3;
 	for (int i = 1; i < nSurface; i += 2) {
@@ -411,8 +409,19 @@ void CreatePipe(int id, int xOff, int yOff, int zOff, int length, int radius) {
 																		lightNormalsMantle[j + 0 % numberOfVertices][2]);
 	}
 
+	// TODO: fix first/last
+	m3dLoadVector3(lightNormalsMantle[0],  surfaceNormalsMantle[nSurface - 1][0] + surfaceNormalsMantle[0][0] + surfaceNormalsCircle[1][0][0],
+										   surfaceNormalsMantle[nSurface - 1][1] + surfaceNormalsMantle[0][1] + surfaceNormalsCircle[1][0][1],
+										   surfaceNormalsMantle[nSurface - 1][2] + surfaceNormalsMantle[0][2] + surfaceNormalsCircle[1][0][2]);
+	m3dLoadVector3(lightNormalsMantle[1],  surfaceNormalsMantle[nSurface - 1][0] + surfaceNormalsMantle[0][0] + surfaceNormalsCircle[0][0][0],
+										   surfaceNormalsMantle[nSurface - 1][1] + surfaceNormalsMantle[0][1] + surfaceNormalsCircle[0][0][1],
+										   surfaceNormalsMantle[nSurface - 1][2] + surfaceNormalsMantle[0][2] + surfaceNormalsCircle[0][0][2]);
+		// TODO: fix first/last
+	//m3dLoadVector3(lightNormalsMantle[28], 0,0,0);
+
+
 	// print
-	for (int i = 0; i < numberOfVertices; i++) {
+	for (int i = 0; i < numberOfVertices * 2; i++) {
 		printf("%d: lnm_x: %f lnm_y: %f lnm_z: %f \n", i, lightNormalsMantle[i][0], lightNormalsMantle[i][1], lightNormalsMantle[i][2]);
 	}
 
@@ -512,6 +521,27 @@ void CreatePipe(int id, int xOff, int yOff, int zOff, int length, int radius) {
 	normals[id].CopyVertexData3f(vNormals[id]);
 	normals[id].End();
 	*/
+
+	// define all light normals
+	rohr.Begin(GL_TRIANGLES, numberOfVertices);
+	rohr.CopyNormalDataf(lightNormalsMantle);
+	rohr.End();
+
+	M3DVector3f* lightNormalsCircle1 = new M3DVector3f[numberOfVertices]();
+	M3DVector3f* lightNormalsCircle2 = new M3DVector3f[numberOfVertices]();
+	for (int i = 0; i < numberOfVertices; i++) {
+		m3dLoadVector3(lightNormalsCircle1[i], surfaceNormalsCircle[0][0][0], surfaceNormalsCircle[0][0][1], surfaceNormalsCircle[0][0][2]);
+		m3dLoadVector3(lightNormalsCircle2[i], surfaceNormalsCircle[1][0][0], surfaceNormalsCircle[1][0][1], surfaceNormalsCircle[1][0][2]);
+	}
+
+	kreis[0].Begin(GL_TRIANGLES, numberOfVertices);
+	kreis[0].CopyNormalDataf(lightNormalsCircle1);
+	kreis[0].End();
+
+	kreis[1].Begin(GL_TRIANGLES, numberOfVertices);
+	kreis[1].CopyNormalDataf(lightNormalsCircle2);
+	kreis[1].End();
+
 }
 
 
@@ -556,12 +586,11 @@ void RenderScene(void)
 
 	//TEST
 	//setze den Shader für das Rendern
-	shaderManager.UseStockShader(GLT_SHADER_FLAT_ATTRIBUTES, transformPipeline.GetModelViewProjectionMatrix());
+	// shaderManager.UseStockShader(GLT_SHADER_FLAT_ATTRIBUTES, transformPipeline.GetModelViewProjectionMatrix());
 	//---------------------------------
 
 	//Zeichne Model
-	
-	geometryBatch.Draw();
+//	geometryBatch.Draw();
 	rohr.Draw();
 	kreis[0].Draw();
 	kreis[1].Draw();
@@ -593,7 +622,7 @@ void SetupRC()
 
 	//TEST
 	//initialisiert die standard shader
-	shaderManager.InitializeStockShaders();
+	// shaderManager.InitializeStockShaders();
 	//-------------------------------------
 
 	transformPipeline.SetMatrixStacks(modelViewMatrix,projectionMatrix);
