@@ -1,4 +1,4 @@
-//
+﻿//
 // The gouraud vertex shader.
 // ---------------------------------
 // Angepasst f�r Core Profile
@@ -19,6 +19,11 @@ uniform mat4 mvpMatrix;
 uniform mat4 mvMatrix;
 uniform mat4 texM;
 uniform mat3 normalMatrix;
+
+////Lighting
+uniform int infLight = 0;
+////_View
+uniform int infView = 0;
 
 /// Light position in Eye-Space
 uniform vec4 light_pos_vs;
@@ -51,16 +56,24 @@ void main()
 	vec4 vertex_vs = mvMatrix * vVertex;
 	vec3 ecPos = vertex_vs.xyz / vertex_vs.w;
 	// Berechne Lichtrichtung in Eye-Space
-
-	vec3 light_dir_vs = normalize(light_pos_vs.xyz - ecPos); // Punkt Lichtquelle
-	//vec3 light_dir_vs = normalize(vec3(light_pos_vs.xyz)); // gerichtetes Licht
+	vec3 light_dir_vs;
+	if (infLight < 1){
+		light_dir_vs = normalize(light_pos_vs.xyz - ecPos); // Punkt Lichtquelle
+	} else {
+		light_dir_vs = normalize(vec3(light_pos_vs.xyz)); // gerichtetes Licht
+	}
 
 	// Normalen von Objekt- in Eye-Space transformieren
 	vec3 normal_vs = normalize(normalMatrix * (vNormal).xyz);
 
+	vec3 view_dir_vs;
 	// Betrachtervektor in Eye-Space
-	vec3 view_dir_vs = normalize(-ecPos); // lokaler Betrachtervektor im Eye-Space
-	//vec3 light_dir_vs = vec3( 0.0, 0.0, 1.0); // infiniter Betrachtervektor im Eye-Space
+	if (infView < 1) {
+		 view_dir_vs = normalize(-ecPos); // lokaler Betrachtervektor im Eye-Space
+	}
+	else {
+		light_dir_vs = vec3( 0.0, 0.0, 1.0); // infiniter Betrachtervektor im Eye-Space
+	}
 
 	// Halfway Vektor f�r das Phong-Blinn Beleuchtungsmodell berechnen
 	vec3 halfway_vs = normalize(view_dir_vs + light_dir_vs);

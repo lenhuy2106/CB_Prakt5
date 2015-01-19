@@ -1,4 +1,4 @@
-// Ausgangssoftware des 3. Praktikumsversuchs 
+﻿// Ausgangssoftware des 3. Praktikumsversuchs 
 // zur Vorlesung Echtzeit-3D-Computergrahpik
 // von Prof. Dr. Alfred Nischwitz
 // Programm umgesetzt mit der GLTools Library
@@ -25,21 +25,24 @@ GLBatch geometryBatch;
 GLuint shaders;
 /// View space light position
 float light_pos[4] = { 0.5f, 0.1f, -5.0f, 1.0f };
+bool bInf = false;
+bool bEyeInf = false;
+bool bNormals = false;
 /// Lichtfarben
-float light_ambient[4] = { 0.0, 0.0, 0.0, 1.0 };
+float light_ambient[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 float light_diffuse[4] = { 1.f, 1.f, 1.f, 1.0f };
 float light_specular[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
 //Materialeigenschaften
-float mat_emissive[4] = { 0.0, 0.0, 0.0, 1.0 };
-float mat_ambient[4] = { 0.0, 0.0, 0.0, 1.0 };
-float mat_diffuse[4] = { 1.0, 1.0, 1.0, 1.0 };
-float mat_specular[4] = { 1.0, 1.0, 1.0, 1.0 };
+float mat_emissive[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+float mat_ambient[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+float mat_diffuse[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+float mat_specular[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
 float specular_power = 10;
 // Rotationsgroessen
-float rotation[] = { 0, 0, 0, 0 };
+float rotation[] = { 0.f, 0.f, 0.f, 0.f };
 //GUI
 TwBar *bar;
-unsigned int tesselation = 2;
+unsigned int tesselation = 8;
 float scaling = 1.0f;
 // Definition der Kreiszahl
 #define GL_PI 3.1415f
@@ -75,6 +78,20 @@ void InitGUI()
 	TwAddVarRW(bar, "Model Rotation", TW_TYPE_QUAT4F, &rotation, "");
 	TwAddVarRW(bar, "Light Position", TW_TYPE_DIR3F, &light_pos, "group=Light axisx=-x axisy=-y axisz=-z");
 	//Hier weitere GUI Variablen anlegen. F�r Farbe z.B. den Typ TW_TYPE_COLOR4F benutzen
+	TwAddVarRW(bar, "Light Ambient", TW_TYPE_COLOR3F, &light_ambient, "");
+	TwAddVarRW(bar, "Light Diffusion", TW_TYPE_COLOR3F, &light_diffuse, "");
+	TwAddVarRW(bar, "Light Specular", TW_TYPE_COLOR3F, &light_specular, "");
+	//MaterialEigenschaften
+	TwAddVarRW(bar, "Material Emissive", TW_TYPE_COLOR3F, &mat_emissive, "");
+	TwAddVarRW(bar, "Material Ambient", TW_TYPE_COLOR3F, &mat_ambient, "");
+	TwAddVarRW(bar, "Material Diffusion", TW_TYPE_COLOR3F, &mat_diffuse, "");
+	TwAddVarRW(bar, "Material Specualar", TW_TYPE_COLOR3F, &mat_specular, "");
+
+	//Lighting/View
+	TwAddVarRW(bar, "Infinite Light?", TW_TYPE_BOOLCPP, &bInf, "");
+	TwAddVarRW(bar, "Infinite View?", TW_TYPE_BOOLCPP, &bEyeInf, "");
+
+	TwAddVarRW(bar, "Draw Normals", TW_TYPE_BOOLCPP, &bNormals, "");
 }
 void CreateGeometry()
 {
@@ -473,16 +490,35 @@ void RenderScene(void)
 	glUniform4fv(glGetUniformLocation(shaders, "mat_diffuse"), 1, mat_diffuse);
 	glUniform4fv(glGetUniformLocation(shaders, "mat_specular"), 1, mat_specular);
 
+	if (bInf){
+		glUniform1i(glGetUniformLocation(shaders, "infLight"), 1);
+	}
+	else{
+		glUniform1i(glGetUniformLocation(shaders, "infLight"), 0);
+	}
+
+	if (bEyeInf){
+		glUniform1i(glGetUniformLocation(shaders, "infView"), 1);
+	}
+	else{
+		glUniform1i(glGetUniformLocation(shaders, "infView"), 0);
+	}
+
+	if (bNormals){
+		glLineWidth(1);
+		normals[0].Draw();
+		normals[1].Draw();
+		normals[2].Draw();
+	}
+	else{
+	}
+
 	//Zeichne Model
 	//	geometryBatch.Draw();
 	kreis[0].Draw();
 	kreis[1].Draw();
 	rohr.Draw();
 
-	glLineWidth(1);
-	normals[0].Draw();
-	normals[1].Draw();
-	normals[2].Draw();
 	modelViewMatrix.PopMatrix();
 	// Draw tweak bars
 	TwDraw();
