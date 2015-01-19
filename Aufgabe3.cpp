@@ -10,6 +10,7 @@
 #include <GLTools.h>
 #include <GLMatrixStack.h>
 #include <GLGeometryTransform.h>
+#include <ImageLoader/ImageLoader.h>
 #include <GLFrustum.h>
 #include <math.h>
 #include <math3d.h>
@@ -23,19 +24,19 @@ GLFrustum viewFrustum;
 GLBatch geometryBatch;
 GLuint shaders;
 /// View space light position
-float light_pos[4] = {0.5f,0.1f,-5.0f,1.0f} ;
+float light_pos[4] = { 0.5f, 0.1f, -5.0f, 1.0f };
 /// Lichtfarben
-float light_ambient[4] = {0.0, 0.0, 0.0, 1.0}; 
-float light_diffuse[4] = {0.9f,0.0f,0.5f,1.0f} ;
-float light_specular[4] = {1.0f,1.0f,1.0f,1.0f} ;
+float light_ambient[4] = { 0.0, 0.0, 0.0, 1.0 };
+float light_diffuse[4] = { 1.f, 1.f, 1.f, 1.0f };
+float light_specular[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
 //Materialeigenschaften
-float mat_emissive[4] = {0.0, 0.0, 0.0, 1.0};
-float mat_ambient[4]  = {0.0, 0.0, 0.0, 1.0}; 
-float mat_diffuse[4]    = {1.0, 1.0, 1.0, 1.0};
-float mat_specular[4]   = {1.0, 1.0, 1.0, 1.0};
+float mat_emissive[4] = { 0.0, 0.0, 0.0, 1.0 };
+float mat_ambient[4] = { 0.0, 0.0, 0.0, 1.0 };
+float mat_diffuse[4] = { 1.0, 1.0, 1.0, 1.0 };
+float mat_specular[4] = { 1.0, 1.0, 1.0, 1.0 };
 float specular_power = 10;
 // Rotationsgroessen
-float rotation[] = {0, 0,0,0};
+float rotation[] = { 0, 0, 0, 0 };
 //GUI
 TwBar *bar;
 unsigned int tesselation = 2;
@@ -60,39 +61,31 @@ void getAllSurfaceNormals(int numberOfVertices, M3DVector3f* vertices);
 M3DVector3f* getTriangleNormal(M3DVector3f v0, M3DVector3f v1, M3DVector3f v2);
 void normalizeVector(M3DVector3f *vector);
 
+const std::string TextureMapName = "../Texturen/e43_color_1280_720.bmp";
+
+//Textur Id fÃ¼r die Texture-Map
+GLuint TexId[1];
+
+
+
 void InitGUI()
 {
 	bar = TwNewBar("TweakBar");
-	TwDefine(" TweakBar size='200 400'"); 
-	TwAddVarRW(bar,"Model Rotation",TW_TYPE_QUAT4F,&rotation,"");
-	TwAddVarRW(bar,"Light Position", TW_TYPE_DIR3F,&light_pos,"group=Light axisx=-x axisy=-y axisz=-z");
-	//Hier weitere GUI Variablen anlegen. Für Farbe z.B. den Typ TW_TYPE_COLOR4F benutzen
+	TwDefine(" TweakBar size='200 400'");
+	TwAddVarRW(bar, "Model Rotation", TW_TYPE_QUAT4F, &rotation, "");
+	TwAddVarRW(bar, "Light Position", TW_TYPE_DIR3F, &light_pos, "group=Light axisx=-x axisy=-y axisz=-z");
+	//Hier weitere GUI Variablen anlegen. Fï¿½r Farbe z.B. den Typ TW_TYPE_COLOR4F benutzen
 }
 void CreateGeometry()
 {
-	/*
-	//Dreieck
-	geometryBatch.Begin(GL_TRIANGLES,3);
-	
-	geometryBatch.Normal3f(0,0,1);
-	geometryBatch.Vertex3f(-1,-1,0);
-	
-	geometryBatch.Normal3f(0,0,1);
-	geometryBatch.Vertex3f(0,1,0);
-	
-	geometryBatch.Normal3f(0,0,1);
-	geometryBatch.Vertex3f(1,-1,0);
-	
-	geometryBatch.End();
-	*/
-
 	CreateCylinder(0, 0, 0, 10, 5);
-	
+
 	//Shader Programme laden. Die letzen Argumente geben die Shader-Attribute an. Hier wird Vertex und Normale gebraucht.
-	shaders = gltLoadShaderPairWithAttributes("VertexShader.glsl", "FragmentShader.glsl", 2, 
-		GLT_ATTRIBUTE_VERTEX, "vVertex", 
-		GLT_ATTRIBUTE_NORMAL, "vNormal");
-	
+	shaders = gltLoadShaderPairWithAttributes("VertexShader.glsl", "FragmentShader.glsl", 3,
+		GLT_ATTRIBUTE_VERTEX, "vVertex",
+		GLT_ATTRIBUTE_NORMAL, "vNormal",
+		GLT_ATTRIBUTE_TEXTURE0, "vTexCoord");
+
 	gltCheckErrors(shaders);
 }
 
@@ -110,13 +103,13 @@ void CreateCircle(int id, int xOff, int yOff, int zOff, int radius) {
 	int numberOfVertices = actualTriangles * 3;
 
 	// Erzeuge einen weiteren Triangle_Fan um den kreis zu bedecken
-	// Manuel verändern... numberOfVertices
+	// Manuel verï¿½ndern... numberOfVertices
 	M3DVector3f* kreisVertices = new M3DVector3f[numberOfVertices]();
 	M3DVector4f* kreisColors = new M3DVector4f[numberOfVertices]();
 
 	// Das Zentrum des Triangle_Fans ist im Ursprung
 	// DEP: m3dLoadVector3(kreisVertices[0], xOff, yOff, zOff*size);
-	m3dLoadVector4(kreisColors[0], 1, 0, 0, 1);
+	m3dLoadVector4(kreisColors[0], 1, 0.5, 0, 1);
 	int iPivot = 1 * size;
 	int i = 0;
 
@@ -140,16 +133,6 @@ void CreateCircle(int id, int xOff, int yOff, int zOff, int radius) {
 		float x2 = radius*size*cos(angle2);
 		float y2 = radius*size*sin(angle2);
 
-		// Alterniere die Farbe zwischen Rot und Gruen
-		/* TODO: Fix coloring
-		if ((iPivot % 2) == 0) {
-			m3dLoadVector4(kreisColors[i], 1, 0.8, 0.2, 1);
-
-		} else {
-			m3dLoadVector4(kreisColors[i], 0, 0.8, 0, 1);
-		}
-		*/
-
 		// Inkrementiere iPivot um die Farbe beim naechsten mal zu wechseln
 		iPivot++;
 
@@ -162,7 +145,7 @@ void CreateCircle(int id, int xOff, int yOff, int zOff, int radius) {
 	printf("CIRCLE: actual triangles: %d \n", actualTriangles);
 	// calculate normals for every triangles
 	// getAllSurfaceNormals(actualTriangles, kreisVertices);
-	surfaceNormalsCircle[id] = new M3DVector3f[(int) actualTriangles]();
+	surfaceNormalsCircle[id] = new M3DVector3f[(int)actualTriangles]();
 	for (int i = 0; i < actualTriangles; i++) {
 		// M3DVector3f* normal = getTriangleNormal(vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2]);
 		int j = i * 3;
@@ -198,8 +181,8 @@ void CreateCircle(int id, int xOff, int yOff, int zOff, int radius) {
 		int j = i * 2;
 		m3dLoadVector3(vNormals[id][j], kreisVertices[i][0], kreisVertices[i][1], kreisVertices[i][2]);
 		m3dLoadVector3(vNormals[id][j + 1], surfaceNormalsCircle[id][0][0] + kreisVertices[i][0],
-											surfaceNormalsCircle[id][0][1] + kreisVertices[i][1],
-											surfaceNormalsCircle[id][0][2] + kreisVertices[i][2]);
+			surfaceNormalsCircle[id][0][1] + kreisVertices[i][1],
+			surfaceNormalsCircle[id][0][2] + kreisVertices[i][2]);
 
 		// colors
 		m3dLoadVector4(vNormalsColors[id][j], 0.5, 0.5, 0.5, 1);
@@ -275,22 +258,27 @@ void normalizeVector(M3DVector3f *vector) {
 	*vector[2] /= length;
 }
 
-// Malt Pipe mit Länge length.
+// Malt Pipe mit Lï¿½nge length.
 void CreatePipe(int id, int xOff, int yOff, int zOff, int length, int radius) {
 	float size = 2 + 0.5 * scaling;
 	int minTriangles = 8;
 	int actualTriangles = tesselation * minTriangles;
 	int numberOfVertices = actualTriangles * 3;
 	// Erzeuge einen Triangle_Strip um den Mantel zu erzeugen
-	// Manuel verändern... numberOfVertices
+	// Manuel verï¿½ndern... numberOfVertices
 	M3DVector3f* pipeVertices = new M3DVector3f[numberOfVertices]();
 	M3DVector4f* pipeColors = new M3DVector4f[numberOfVertices]();
+	M3DVector2f* pipeTexture = new M3DVector2f[numberOfVertices]();
 
 	// create
 	int i = 0;
 	for (int j = 0; j < actualTriangles / 2; j++) {
 		float angle = (2.0f*GL_PI) - j * (2.0f*GL_PI / (actualTriangles / 2.0f));
-		float angle2 = (2.0f*GL_PI) - (j+1) * (2.0f*GL_PI / (actualTriangles / 2.0f));
+		float angle2 = (2.0f*GL_PI) - (j + 1) * (2.0f*GL_PI / (actualTriangles / 2.0f));
+
+		float numberOfRectangles = actualTriangles / 2;
+		float h = 1280 / numberOfRectangles;
+
 
 		// Berechne x und y Positionen des naechsten Vertex
 		float x = radius*size*cos(angle);
@@ -306,13 +294,26 @@ void CreatePipe(int id, int xOff, int yOff, int zOff, int length, int radius) {
 		m3dLoadVector3(pipeVertices[i + 0], xOff + x, yOff + y, zOff - (length / 2)*size);
 		m3dLoadVector3(pipeVertices[i + 1], xOff + x, yOff + y, zOff + (length / 2)*size);
 		m3dLoadVector3(pipeVertices[i + 2], xOff + x2, yOff + y2, zOff + (length / 2)*size);
-		
+
 		m3dLoadVector3(pipeVertices[i + 3], xOff + x2, yOff + y2, zOff - (length / 2)*size);
 		m3dLoadVector3(pipeVertices[i + 4], xOff + x, yOff + y, zOff - (length / 2)*size);
 		m3dLoadVector3(pipeVertices[i + 5], xOff + x2, yOff + y2, zOff + (length / 2)*size);
+
+		m3dLoadVector2(pipeTexture[i + 0], (j)*h, 720);
+		m3dLoadVector2(pipeTexture[i + 1], (j)*h, 0);
+		m3dLoadVector2(pipeTexture[i + 2], (j+1)*h, 0);
+
+		m3dLoadVector2(pipeTexture[i + 3], (j + 1)*h, 720);
+		m3dLoadVector2(pipeTexture[i + 4], (j)*h, 720);
+		m3dLoadVector2(pipeTexture[i + 5], (j + 1)*h, 0);
+
 		i += 6;
 	}
-	
+
+	for (int test = 0; test < numberOfVertices; test++){
+		std::cout << "X = " << pipeTexture[test][0] << ",  Y = " << pipeTexture[test][1] << "\n";
+	}
+
 	printf("MANTLE: actual triangles: %d \n", actualTriangles);
 
 	// calculate normals for every triangles
@@ -345,185 +346,74 @@ void CreatePipe(int id, int xOff, int yOff, int zOff, int length, int radius) {
 
 	M3DVector3f* lightNormalsMantle = new M3DVector3f[numberOfVertices * 2]();
 
-	// calculate combined light normals for every vertex
-	/*
-	for (int i = 0; i < numberOfVertices; i++) {
-		int j = i * 2;
-		m3dLoadVector3(vNormals[id][j], pipeVertices[i][0], pipeVertices[i][1], pipeVertices[i][2]);
-		m3dLoadVector3(vNormals[id][j + 1], surfaceNormalsMantle[i / 3][0] + pipeVertices[i][0],
-											surfaceNormalsMantle[i / 3][1] + pipeVertices[i][1],
-											surfaceNormalsMantle[i / 3][2] + pipeVertices[i][2]);
-	*/
-	/*
-	// special cases 0 and 1
-	m3dLoadVector3(lightNormalsMantle[0], surfaceNormalsMantle[numberOfVertices / 3][0] + surfaceNormalsMantle[1][0] + surfaceNormalsCircle[0][0][0],
-											surfaceNormalsMantle[numberOfVertices / 3][1] + surfaceNormalsMantle[1][1] + surfaceNormalsCircle[0][0][1],
-											surfaceNormalsMantle[numberOfVertices / 3][2] + surfaceNormalsMantle[1][2] + surfaceNormalsCircle[0][0][2]);
-
-	m3dLoadVector3(lightNormalsMantle[1], surfaceNormalsMantle[numberOfVertices / 3][0] + surfaceNormalsMantle[1][0] + surfaceNormalsCircle[1][0][0],
-											surfaceNormalsMantle[i / 3][1] + surfaceNormalsMantle[1][1] + surfaceNormalsCircle[1][0][1],
-											surfaceNormalsMantle[i / 3][2] + surfaceNormalsMantle[1][2] + surfaceNormalsCircle[1][0][2]);
-	*/
-	
-	// rest
-	/*
-	for (int i = 0; i < numberOfVertices / 4 - 1; i++) {
-		m3dLoadVector3(lightNormalsMantle[i], surfaceNormalsMantle[i / 3][0] + surfaceNormalsMantle[i / 3 + 2][0] + surfaceNormalsCircle[i % 2][0][0],
-												surfaceNormalsMantle[i / 3][1] + surfaceNormalsMantle[i / 3 + 2][1] + surfaceNormalsCircle[i % 2][0][1],
-												surfaceNormalsMantle[i / 3][2] + surfaceNormalsMantle[i / 3 + 2][2] + surfaceNormalsCircle[i % 2][0][2]);
-
-		m3dLoadVector3(lightNormalsMantle[i + 3], lightNormalsMantle[i][0],
-												lightNormalsMantle[i][1],
-												lightNormalsMantle[i][2]);
-
-		m3dLoadVector3(lightNormalsMantle[i + 7], lightNormalsMantle[i][0],
-												lightNormalsMantle[i][1],
-												lightNormalsMantle[i][2]);
-
-		//m3dNormalizeVector3(lightNormalsMantle[i]);
-		printf("%d - %d \n",i / 3, i / 3 + 2);
-	}
-	*/
 
 	printf("\n");
 	int nSurface = numberOfVertices / 3;
 	for (int i = 1; i < nSurface; i += 2) {
 		int j = i * 3;
-		m3dLoadVector3(lightNormalsMantle[j - 1 % numberOfVertices],	surfaceNormalsMantle[i][0] + surfaceNormalsMantle[i + 2 % nSurface][0] + surfaceNormalsCircle[0][0][0],
-																		surfaceNormalsMantle[i][1] + surfaceNormalsMantle[i + 2 % nSurface][1] + surfaceNormalsCircle[0][0][1],
-																		surfaceNormalsMantle[i][2] + surfaceNormalsMantle[i + 2 % nSurface][2] + surfaceNormalsCircle[0][0][2]);
-		m3dLoadVector3(lightNormalsMantle[j + 2 % numberOfVertices],    lightNormalsMantle[j - 1 % numberOfVertices][0],
-																		lightNormalsMantle[j - 1 % numberOfVertices][1],
-																		lightNormalsMantle[j - 1 % numberOfVertices][2]);
-		m3dLoadVector3(lightNormalsMantle[j + 4 % numberOfVertices],    lightNormalsMantle[j - 1 % numberOfVertices][0],
-																		lightNormalsMantle[j - 1 % numberOfVertices][1],
-																		lightNormalsMantle[j - 1 % numberOfVertices][2]);
-		m3dLoadVector3(lightNormalsMantle[j + 0 % numberOfVertices],	surfaceNormalsMantle[i][0] + surfaceNormalsMantle[i + 2 % nSurface][0] + surfaceNormalsCircle[1][0][0],
-																		surfaceNormalsMantle[i][1] + surfaceNormalsMantle[i + 2 % nSurface][1] + surfaceNormalsCircle[1][0][1],
-																		surfaceNormalsMantle[i][2] + surfaceNormalsMantle[i + 2 % nSurface][2] + surfaceNormalsCircle[1][0][2]);
-		m3dLoadVector3(lightNormalsMantle[j + 3 % numberOfVertices],    lightNormalsMantle[j + 0 % numberOfVertices][0],
-																		lightNormalsMantle[j + 0 % numberOfVertices][1],
-																		lightNormalsMantle[j + 0 % numberOfVertices][2]);
-		m3dLoadVector3(lightNormalsMantle[j + 7 % numberOfVertices],    lightNormalsMantle[j + 0 % numberOfVertices][0],
-																		lightNormalsMantle[j + 0 % numberOfVertices][1],
-																		lightNormalsMantle[j + 0 % numberOfVertices][2]);
+		m3dLoadVector3(lightNormalsMantle[j - 1 % numberOfVertices], surfaceNormalsMantle[i][0] + surfaceNormalsMantle[i + 2 % nSurface][0] + surfaceNormalsCircle[0][0][0],
+			surfaceNormalsMantle[i][1] + surfaceNormalsMantle[i + 2 % nSurface][1] + surfaceNormalsCircle[0][0][1],
+			surfaceNormalsMantle[i][2] + surfaceNormalsMantle[i + 2 % nSurface][2] + surfaceNormalsCircle[0][0][2]);
+		m3dLoadVector3(lightNormalsMantle[j + 2 % numberOfVertices], lightNormalsMantle[j - 1 % numberOfVertices][0],
+			lightNormalsMantle[j - 1 % numberOfVertices][1],
+			lightNormalsMantle[j - 1 % numberOfVertices][2]);
+		m3dLoadVector3(lightNormalsMantle[j + 4 % numberOfVertices], lightNormalsMantle[j - 1 % numberOfVertices][0],
+			lightNormalsMantle[j - 1 % numberOfVertices][1],
+			lightNormalsMantle[j - 1 % numberOfVertices][2]);
+		m3dLoadVector3(lightNormalsMantle[j + 0 % numberOfVertices], surfaceNormalsMantle[i][0] + surfaceNormalsMantle[i + 2 % nSurface][0] + surfaceNormalsCircle[1][0][0],
+			surfaceNormalsMantle[i][1] + surfaceNormalsMantle[i + 2 % nSurface][1] + surfaceNormalsCircle[1][0][1],
+			surfaceNormalsMantle[i][2] + surfaceNormalsMantle[i + 2 % nSurface][2] + surfaceNormalsCircle[1][0][2]);
+		m3dLoadVector3(lightNormalsMantle[j + 3 % numberOfVertices], lightNormalsMantle[j + 0 % numberOfVertices][0],
+			lightNormalsMantle[j + 0 % numberOfVertices][1],
+			lightNormalsMantle[j + 0 % numberOfVertices][2]);
+		m3dLoadVector3(lightNormalsMantle[j + 7 % numberOfVertices], lightNormalsMantle[j + 0 % numberOfVertices][0],
+			lightNormalsMantle[j + 0 % numberOfVertices][1],
+			lightNormalsMantle[j + 0 % numberOfVertices][2]);
 	}
 
 	// TODO: fix first/last
-	m3dLoadVector3(lightNormalsMantle[0],  surfaceNormalsMantle[nSurface - 1][0] + surfaceNormalsMantle[0][0] + surfaceNormalsCircle[1][0][0],
-										   surfaceNormalsMantle[nSurface - 1][1] + surfaceNormalsMantle[0][1] + surfaceNormalsCircle[1][0][1],
-										   surfaceNormalsMantle[nSurface - 1][2] + surfaceNormalsMantle[0][2] + surfaceNormalsCircle[1][0][2]);
-	m3dLoadVector3(lightNormalsMantle[1],  surfaceNormalsMantle[nSurface - 1][0] + surfaceNormalsMantle[0][0] + surfaceNormalsCircle[0][0][0],
-										   surfaceNormalsMantle[nSurface - 1][1] + surfaceNormalsMantle[0][1] + surfaceNormalsCircle[0][0][1],
-										   surfaceNormalsMantle[nSurface - 1][2] + surfaceNormalsMantle[0][2] + surfaceNormalsCircle[0][0][2]);
-		// TODO: fix first/last
-	//m3dLoadVector3(lightNormalsMantle[28], 0,0,0);
-
+	m3dLoadVector3(lightNormalsMantle[0], surfaceNormalsMantle[nSurface - 1][0] + surfaceNormalsMantle[0][0] + surfaceNormalsCircle[1][0][0],
+		surfaceNormalsMantle[nSurface - 1][1] + surfaceNormalsMantle[0][1] + surfaceNormalsCircle[1][0][1],
+		surfaceNormalsMantle[nSurface - 1][2] + surfaceNormalsMantle[0][2] + surfaceNormalsCircle[1][0][2]);
+	m3dLoadVector3(lightNormalsMantle[1], surfaceNormalsMantle[nSurface - 1][0] + surfaceNormalsMantle[0][0] + surfaceNormalsCircle[0][0][0],
+		surfaceNormalsMantle[nSurface - 1][1] + surfaceNormalsMantle[0][1] + surfaceNormalsCircle[0][0][1],
+		surfaceNormalsMantle[nSurface - 1][2] + surfaceNormalsMantle[0][2] + surfaceNormalsCircle[0][0][2]);
 
 	// print
 	for (int i = 0; i < numberOfVertices * 2; i++) {
 		printf("%d: lnm_x: %f lnm_y: %f lnm_z: %f \n", i, lightNormalsMantle[i][0], lightNormalsMantle[i][1], lightNormalsMantle[i][2]);
 	}
 
-	/*
-	m3dLoadVector3(lightNormalsMantle[0], surfaceNormalsMantle[0][0] + surfaceNormalsMantle[1][0] + surfaceNormalsCircle[0][0][0],
-										  surfaceNormalsMantle[0][1] + surfaceNormalsMantle[1][1] + surfaceNormalsCircle[0][0][1],
-										  surfaceNormalsMantle[0][2] + surfaceNormalsMantle[1][2] + surfaceNormalsCircle[0][0][2]);
-	*/
-
-	// ---------------------------------------------
-
-	rohr.Begin(GL_TRIANGLES, numberOfVertices);
-	rohr.CopyVertexData3f(pipeVertices);
-	rohr.CopyColorData4f(pipeColors);
-	rohr.End();
 
 	// Draw light normals
 	vNormals[id] = new M3DVector3f[numberOfVertices * 2]();
 	vNormalsColors[id] = new M3DVector4f[numberOfVertices * 2]();
-	
+
 	for (int i = 0; i < numberOfVertices; i++) {
 		int j = i * 2;
 		m3dLoadVector3(vNormals[id][j], pipeVertices[i][0], pipeVertices[i][1], pipeVertices[i][2]);
 		m3dLoadVector3(vNormals[id][j + 1], lightNormalsMantle[i][0] + pipeVertices[i][0],
-											lightNormalsMantle[i][1] + pipeVertices[i][1],
-											lightNormalsMantle[i][2] + pipeVertices[i][2]);
+			lightNormalsMantle[i][1] + pipeVertices[i][1],
+			lightNormalsMantle[i][2] + pipeVertices[i][2]);
 
 		// colors
 		m3dLoadVector4(vNormalsColors[id][j], 0.5, 0.5, 0.5, 1);
 		m3dLoadVector4(vNormalsColors[id][j + 1], 0.5, 0.5, 0.5, 1);
 	}
 
-	/*
-	m3dLoadVector3(vNormals[id][0], pipeVertices[0][0], pipeVertices[0][1], pipeVertices[0][2]);
-	m3dLoadVector3(vNormals[id][1], lightNormalsMantle[4][0] + pipeVertices[0][0],
-									lightNormalsMantle[4][1] + pipeVertices[0][1],
-									lightNormalsMantle[4][2] + pipeVertices[0][2]);
-									*/
-	
-	/*
-	m3dLoadVector3(vNormals[id][2], pipeVertices[3][0], pipeVertices[3][1], pipeVertices[3][2]);
-	m3dLoadVector3(vNormals[id][3], lightNormalsMantle[1][0] + pipeVertices[3][0],
-									lightNormalsMantle[1][1] + pipeVertices[3][1],
-									lightNormalsMantle[1][2] + pipeVertices[3][2]);
 
-	m3dLoadVector3(vNormals[id][4], pipeVertices[4][0], pipeVertices[4][1], pipeVertices[4][2]);
-	m3dLoadVector3(vNormals[id][5], lightNormalsMantle[2][0] + pipeVertices[4][0],
-									lightNormalsMantle[2][1] + pipeVertices[4][1],
-									lightNormalsMantle[2][2] + pipeVertices[4][2]);
-	*/
-	/*
-	m3dLoadVector3(vNormals[id][6], pipeVertices[2][0], pipeVertices[2][1], pipeVertices[2][2]);
-	m3dLoadVector3(vNormals[id][7], lightNormalsMantle[3][0] + pipeVertices[2][0],
-									lightNormalsMantle[3][1] + pipeVertices[2][1],
-									lightNormalsMantle[3][2] + pipeVertices[2][2]);
-	*/
-	
 	normals[id].Begin(GL_LINES, numberOfVertices * 2);
 	normals[id].CopyVertexData3f(vNormals[id]);
 	// TODO: lol
 	normals[id].End();
-	
-	/*
-	// Draw normals
-	vNormals[id] = new M3DVector3f[numberOfVertices * 2]();
-	vNormalsColors[id] = new M3DVector4f[numberOfVertices * 2]();
-	
-	for (int i = 0; i < numberOfVertices; i++) {
-		int j = i * 2;
-		m3dLoadVector3(vNormals[id][j], pipeVertices[i][0], pipeVertices[i][1], pipeVertices[i][2]);
-		m3dLoadVector3(vNormals[id][j + 1], surfaceNormalsMantle[i/3][0] + pipeVertices[i][0],
-											surfaceNormalsMantle[i/3][1] + pipeVertices[i][1],
-											surfaceNormalsMantle[i/3][2] + pipeVertices[i][2]);
 
-		// colors
-		m3dLoadVector4(vNormalsColors[id][j], 0.5, 0.5, 0.5, 1);
-		m3dLoadVector4(vNormalsColors[id][j + 1], 0.5, 0.5, 0.5, 1);
-	}
 
-	// print
-	for (int i = 0; i < numberOfVertices / 3; i++) {
-		printf("%d: snm_x: %f snfc_y: %f snfc_z: %f \n", i, surfaceNormalsMantle[i][0], surfaceNormalsMantle[i][1], surfaceNormalsMantle[i][2]);
-	}
-	printf("\n");
-
-	for (int i = 0; i < numberOfVertices; i++) {
-		printf("%d: pv_x: %f pv_y: %f pv_z: %f \n", i, pipeVertices[i][0], pipeVertices[i][1], pipeVertices[i][2]);
-	}
-	printf("\n");
-	/*
-	for (int i = 0; i < numberOfVertices * 2; i++) {
-		printf("%d: vn_x: %d vn_y: %d vn_z: %d \n", i, vNormals[i][0], vNormals[i][1], vNormals[i][2]);
-	}
-	printf("\n");
-
-	normals[id].Begin(GL_LINES, numberOfVertices * 2);
-	normals[id].CopyVertexData3f(vNormals[id]);
-	normals[id].End();
-	*/
 
 	// define all light normals
-	rohr.Begin(GL_TRIANGLES, numberOfVertices);
+	rohr.Begin(GL_TRIANGLES, numberOfVertices, 1);
+	rohr.CopyVertexData3f(pipeVertices);
+	rohr.CopyTexCoordData2f(pipeTexture, 0);
+	rohr.CopyColorData4f(pipeColors);
 	rohr.CopyNormalDataf(lightNormalsMantle);
 	rohr.End();
 
@@ -551,56 +441,48 @@ void RenderScene(void)
 	// TEST:
 	glPolygonMode(GL_BACK, GL_LINE);
 
-	// Clearbefehle für den color buffer und den depth buffer
+	// Clearbefehle fï¿½r den color buffer und den depth buffer
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glEnable(GL_DEPTH_TEST);
 	modelViewMatrix.LoadIdentity();
 	// initial viewpoint distance
-	modelViewMatrix.Translate(0,0,-50);
-	// Speichere den matrix state und führe die Rotation durch
+	modelViewMatrix.Translate(0, 0, -50);
 	modelViewMatrix.PushMatrix();
-
+	// Speichere den matrix state und fï¿½hre die Rotation durch
 	M3DMatrix44f rot;
-	m3dQuatToRotationMatrix(rot,rotation);
+	m3dQuatToRotationMatrix(rot, rotation);
 	modelViewMatrix.MultMatrix(rot);
-	
 
-	//setze den Shader für das Rendern
+	glBindTexture(GL_TEXTURE_RECTANGLE, TexId[0]);
+	//setze den Shader fï¿½r das Rendern
 	glUseProgram(shaders);
-	// Matrizen an den Shader übergeben
+	// Matrizen an den Shader ï¿½bergeben
 	glUniformMatrix4fv(glGetUniformLocation(shaders, "mvpMatrix"), 1, GL_FALSE, transformPipeline.GetModelViewProjectionMatrix());
-	glUniformMatrix4fv(glGetUniformLocation(shaders, "mvMatrix"),  1, GL_FALSE, transformPipeline.GetModelViewMatrix());
-	glUniformMatrix3fv(glGetUniformLocation(shaders, "normalMatrix"),  1, GL_FALSE, transformPipeline.GetNormalMatrix(true));
-	// Lichteigenschaften übergeben
-	glUniform4fv(glGetUniformLocation(shaders, "light_pos_vs"),1,light_pos);
-	glUniform4fv(glGetUniformLocation(shaders, "light_ambient"),1,light_ambient);
-	glUniform4fv(glGetUniformLocation(shaders, "light_diffuse"),1,light_diffuse);
-	glUniform4fv(glGetUniformLocation(shaders, "light_specular"),1,light_specular);
-	glUniform1f(glGetUniformLocation(shaders, "spec_power"),specular_power);
-	//Materialeigenschaften übergeben
-	glUniform4fv(glGetUniformLocation(shaders, "mat_emissive"),1,mat_emissive);
-	glUniform4fv(glGetUniformLocation(shaders, "mat_ambient"),1,mat_ambient);
-	glUniform4fv(glGetUniformLocation(shaders, "mat_diffuse"),1,mat_diffuse);
-	glUniform4fv(glGetUniformLocation(shaders, "mat_specular"),1,mat_specular);
-
-	//TEST
-	//setze den Shader für das Rendern
-	// shaderManager.UseStockShader(GLT_SHADER_FLAT_ATTRIBUTES, transformPipeline.GetModelViewProjectionMatrix());
-	//---------------------------------
+	glUniformMatrix4fv(glGetUniformLocation(shaders, "mvMatrix"), 1, GL_FALSE, transformPipeline.GetModelViewMatrix());
+	glUniformMatrix3fv(glGetUniformLocation(shaders, "normalMatrix"), 1, GL_FALSE, transformPipeline.GetNormalMatrix(true));
+	// Lichteigenschaften ï¿½bergeben
+	glUniform4fv(glGetUniformLocation(shaders, "light_pos_vs"), 1, light_pos);
+	glUniform4fv(glGetUniformLocation(shaders, "light_ambient"), 1, light_ambient);
+	glUniform4fv(glGetUniformLocation(shaders, "light_diffuse"), 1, light_diffuse);
+	glUniform4fv(glGetUniformLocation(shaders, "light_specular"), 1, light_specular);
+	glUniform1f(glGetUniformLocation(shaders, "spec_power"), specular_power);
+	//Materialeigenschaften ï¿½bergeben
+	glUniform4fv(glGetUniformLocation(shaders, "mat_emissive"), 1, mat_emissive);
+	glUniform4fv(glGetUniformLocation(shaders, "mat_ambient"), 1, mat_ambient);
+	glUniform4fv(glGetUniformLocation(shaders, "mat_diffuse"), 1, mat_diffuse);
+	glUniform4fv(glGetUniformLocation(shaders, "mat_specular"), 1, mat_specular);
 
 	//Zeichne Model
-//	geometryBatch.Draw();
-	rohr.Draw();
+	//	geometryBatch.Draw();
 	kreis[0].Draw();
 	kreis[1].Draw();
-	
+	rohr.Draw();
+
 	glLineWidth(1);
 	normals[0].Draw();
 	normals[1].Draw();
 	normals[2].Draw();
-
-	// Hole die im Stack gespeicherten Transformationsmatrizen wieder zurück
 	modelViewMatrix.PopMatrix();
 	// Draw tweak bars
 	TwDraw();
@@ -614,18 +496,36 @@ void RenderScene(void)
 void SetupRC()
 {
 	// Schwarzer Hintergrund
-	glClearColor( 0.12f,0.35f,0.674f,0.0f ) ;
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
 	// In Uhrzeigerrichtung zeigende Polygone sind die Vorderseiten.
-	// Dies ist umgekehrt als bei der Default-Einstellung weil wir Triangle_Fans benützen
+	// Dies ist umgekehrt als bei der Default-Einstellung weil wir Triangle_Fans benï¿½tzen
 	glFrontFace(GL_CCW);
+	transformPipeline.SetMatrixStacks(modelViewMatrix, projectionMatrix);
 
-	//TEST
-	//initialisiert die standard shader
-	// shaderManager.InitializeStockShaders();
-	//-------------------------------------
 
-	transformPipeline.SetMatrixStacks(modelViewMatrix,projectionMatrix);
+	//Erzeuge eindeutige Namen (Nummern) fÃ¼r Texturen und lade sie
+	glGenTextures(1, TexId);
+	img::ImageLoader imgLoader;
+	//Aktive Textur setzen
+	glBindTexture(GL_TEXTURE_RECTANGLE, TexId[0]);
+	int width, height, type, internalformat;
+	bool jpg = false;
+	type = GL_RGBA;
+	internalformat = GL_BGR;
+
+	unsigned char* data = imgLoader.LoadTextureFromFile(TextureMapName, &width, &height, jpg);
+	//Textur hochladen, bei JPEG bildern muss GL_BGR verwendet werden
+	glTexImage2D(GL_TEXTURE_RECTANGLE, 0, type, width, height,
+		0, internalformat, GL_UNSIGNED_BYTE, data);
+	delete[] data;
+
+	glTexParameterf(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+
 	//erzeuge die geometrie
 	CreateGeometry();
 	InitGUI();
@@ -640,15 +540,15 @@ void ShutDownRC()
 void ChangeSize(int w, int h)
 {
 	// Verhindere eine Division durch Null
-	if(h == 0)
+	if (h == 0)
 		h = 1;
 	// Setze den Viewport gemaess der Window-Groesse
 	glViewport(0, 0, w, h);
 	// Ruecksetzung des Projection matrix stack
 	projectionMatrix.LoadIdentity();
 
-	viewFrustum.SetPerspective(45,w/(float)h,1,100);
-	
+	viewFrustum.SetPerspective(45, w / (float)h, 1, 100);
+
 	projectionMatrix.LoadMatrix(viewFrustum.GetProjectionMatrix());
 	// Ruecksetzung des Model view matrix stack
 	modelViewMatrix.LoadIdentity();
@@ -661,7 +561,7 @@ int main(int argc, char* argv[])
 {
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-	glutInitWindowSize(800,600);
+	glutInitWindowSize(800, 600);
 	glutCreateWindow("A3 Normalenvektoren");
 	atexit(ShutDownRC);
 
@@ -669,7 +569,7 @@ int main(int argc, char* argv[])
 	if (GLEW_OK != err)
 	{
 		//Veralteter Treiber etc.
-		std::cerr <<"Error: "<< glewGetErrorString(err) << "\n";
+		std::cerr << "Error: " << glewGetErrorString(err) << "\n";
 		return 1;
 	}
 	glutMouseFunc((GLUTmousebuttonfun)TwEventMouseButtonGLUT);

@@ -1,17 +1,21 @@
 //
-// Angepasst für Core Profile
+// Angepasst fï¿½r Core Profile
 // ---------------------------------
 //
 // @author: Link Alexis Constantin, Andreas Klein
 // @lecturer: Prof. Dr. Alfred Nischwitz
 //
-// (c)2010 Hochschule München, HM
+// (c)2010 Hochschule Mï¿½nchen, HM
 //
 // ---------------------------------
-#version 130
-in vec4 color ;
+#version 400
+smooth in vec2 texCoords;
+in vec4 color;
 out vec4 fragColor;
+
+uniform samplerRect textureMap;
+
 void main()
 {
-	fragColor = color ;
+	fragColor = color * texture(textureMap, texCoords);
 }
